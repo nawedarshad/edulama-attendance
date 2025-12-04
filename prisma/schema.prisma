@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  photo     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  isActive  Boolean  @default(true)
+
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id])
+
+  // 1️⃣ StaffProfile relation (one-to-one)
+  staffProfile StaffProfile? @relation("StaffProfileUser")
+
+  // 2️⃣ StudentProfile relation (one-to-one)
+  studentProfile StudentProfile? @relation("StudentProfileUser")
+
+  Announcement           Announcement[]
+  AnnouncementAttachment AnnouncementAttachment[]
+  AnnouncementAck        AnnouncementAck[]
+}
+
+model StudentProfile {
+  id                    Int       @id @default(autoincrement())
+  userId                Int       @unique @map("userId")
+  admissionNo           String    @unique
+  rollNo                String?
+  academicYear          String?
+  dob                   DateTime?
+  age                   Int?
+  gender                String?
+  bloodGroup            String?
+  address               String?
+  photo                 String?
+  admissionDate         DateTime?
+  modeOfAdmission       String?
+  prevSchool            String?
+  transferCertificateNo String?
+  religion              String?
+  caste                 String?
+  category              String?
+  siblingDetails        String?
+  nationalId            String?
+  studentPhone          String?
+  studentEmail          String?
+  classId               Int
+  sectionId             Int
+  house                 String?
+
+  leftDate DateTime?
+  Class    Class     @relation(fields: [classId], references: [id])
+  Section  Section   @relation(fields: [sectionId], references: [id])
+
+  // 2️⃣ Opposite side of StudentProfileUser relation
+  user User @relation("StudentProfileUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  AnnouncementAudience AnnouncementAudience[]
+
+  @@index([classId, sectionId])
+}
+
+model StaffProfile {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @unique
+  empCode        String    @unique
+  joinDate       DateTime  @default(now())
+  designation    String
+  department     String
+  employmentType String
+  exitDate       DateTime?
+
+  // 1️⃣ Opposite side of StaffProfileUser relation
+  user User @relation("StaffProfileUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  announcementAudience AnnouncementAudience[]
+}
+
+model Role {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @unique
+  users                User[]
+  AnnouncementAudience AnnouncementAudience[]
+}
+
+model Class {
+  id                   Int                    @id @default(autoincrement())
+  name                 String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  level                String?
+  sections             Section[]
+  StudentProfile       StudentProfile[]
+  AnnouncementAudience AnnouncementAudience[]
+  departmentId         Int?
+}
+
+model Section {
+  id                   Int                    @id @default(autoincrement())
+  name                 String
+  classId              Int
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  class                Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  StudentProfile       StudentProfile[]
+  AnnouncementAudience AnnouncementAudience[]
+
+  @@unique([classId, name])
+}
+
+// Enums
+enum AnnouncementPriority {
+  NORMAL
+  URGENT
+  CRITICAL
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  EXPIRED
+  CANCELLED
+}
+
+enum AudienceType {
+  ALL_SCHOOL
+  CLASS
+  SECTION
+  STUDENT
+  TEACHER
+  PARENTS
+  STAFF
+  ROLE
+  TAG
+  CUSTOM_GROUP
+  BRANCH
+}
+
+enum AckType {
+  READ
+  ACKNOWLEDGE
+  RESPONSE
+  SIGNATURE
+}
+
+// Core announcement
+model Announcement {
+  id             Int                   @id @default(autoincrement())
+  title          String
+  body           String // rich text / markdown
+  summary        String? // short excerpt
+  createdById    Int
+  createdBy      User                  @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  priority       AnnouncementPriority  @default(NORMAL)
+  status         AnnouncementStatus    @default(DRAFT)
+  isEmergency    Boolean               @default(false)
+  isRecurring    Boolean               @default(false)
+  recurringCron  String? // optional cron expression for recurring
+  scheduledAt    DateTime? // when to publish
+  publishedAt    DateTime?
+  expireAt       DateTime? // when to auto-hide
+  visibilityNote String? // free text for admin use
+  metadata       Json? // arbitrary JSON for analytics / delivery hints
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  deletedAt      DateTime?
+
+  // relations
+  audiences         AnnouncementAudience[] // normalized targets
+  attachments       AnnouncementAttachment[]
+  acknowledgements  AnnouncementAck[]
+  analytics         AnnouncementAnalytics?
+
+  @@index([status, scheduledAt])
+  @@index([createdAt])
+  @@index([priority, isEmergency])
+}
+
+// Targeting / audience mapping (normalized)
+model AnnouncementAudience {
+  id             Int          @id @default(autoincrement())
+  announcementId Int
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  type           AudienceType
+
+  // optional foreign keys for each audience type (only one used per row)
+  classId Int? // maps to Class.id
+  class   Class? @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  sectionId Int?
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+
+  studentId Int?
+  student   StudentProfile? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  staffId Int?
+  staff   StaffProfile? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  roleId Int?
+  role   Role? @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  branchId Int? // optional multi-branch architectures
+  // -> add Branch model relation if present in your schema
+
+  customMeta Json? // for any custom audience selector data
+
+  createdAt DateTime @default(now())
+
+  @@unique([announcementId, classId, sectionId, studentId, staffId, roleId], name: "uniq_announcement_audience")
+  @@index([announcementId, type])
+  @@index([classId])
+  @@index([sectionId])
+  @@index([studentId])
+}
+
+// Attachments (documents, posters)
+model AnnouncementAttachment {
+  id             Int          @id @default(autoincrement())
+  announcementId Int
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  fileName       String
+  fileType       String
+  fileUrl        String
+  fileSize       Int?
+  uploadedById   Int?
+  uploadedBy     User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+
+  @@index([announcementId])
+}
+
+// Acknowledgements / read receipts / responses
+model AnnouncementAck {
+  id             Int          @id @default(autoincrement())
+  announcementId Int
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ackType        AckType
+  responseText   String?
+  signatureUrl   String? // for digital signature capture
+  createdAt      DateTime     @default(now())
+
+  @@unique([announcementId, userId, ackType])
+  @@index([announcementId])
+  @@index([userId])
+}
+
+// Lightweight analytics storage (aggregated)
+model AnnouncementAnalytics {
+  id             Int          @id @default(autoincrement())
+  announcementId Int          @unique
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  deliveries     Int          @default(0)
+  successes      Int          @default(0)
+  failures       Int          @default(0)
+  readCount      Int          @default(0)
+  ackCount       Int          @default(0)
+  engagementJson Json? // stores heatmaps / timings / channel breakdown
+  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime     @default(now())
+}
