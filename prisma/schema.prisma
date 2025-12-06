@@ -157,31 +157,31 @@ enum AckType {
 
 // Core announcement
 model Announcement {
-  id             Int                   @id @default(autoincrement())
+  id             Int                  @id @default(autoincrement())
   title          String
   body           String // rich text / markdown
   summary        String? // short excerpt
   createdById    Int
-  createdBy      User                  @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  priority       AnnouncementPriority  @default(NORMAL)
-  status         AnnouncementStatus    @default(DRAFT)
-  isEmergency    Boolean               @default(false)
-  isRecurring    Boolean               @default(false)
+  createdBy      User                 @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  priority       AnnouncementPriority @default(NORMAL)
+  status         AnnouncementStatus   @default(DRAFT)
+  isEmergency    Boolean              @default(false)
+  isRecurring    Boolean              @default(false)
   recurringCron  String? // optional cron expression for recurring
   scheduledAt    DateTime? // when to publish
   publishedAt    DateTime?
   expireAt       DateTime? // when to auto-hide
   visibilityNote String? // free text for admin use
   metadata       Json? // arbitrary JSON for analytics / delivery hints
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
   deletedAt      DateTime?
 
   // relations
-  audiences         AnnouncementAudience[] // normalized targets
-  attachments       AnnouncementAttachment[]
-  acknowledgements  AnnouncementAck[]
-  analytics         AnnouncementAnalytics?
+  audiences        AnnouncementAudience[] // normalized targets
+  attachments      AnnouncementAttachment[]
+  acknowledgements AnnouncementAck[]
+  analytics        AnnouncementAnalytics?
 
   @@index([status, scheduledAt])
   @@index([createdAt])
