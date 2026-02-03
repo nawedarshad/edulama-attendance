@@ -437,6 +437,7 @@ export class TeacherAttendanceService {
                                     select: {
                                         id: true,
                                         name: true,
+                                        photo: true,
                                     }
                                 }
                             }
