@@ -139,6 +139,18 @@ export class TeacherAttendanceController {
         );
     }
 
+    @Get('students')
+    @ApiOperation({ summary: 'Get Students for Attendance', description: 'Get accessible students for the teacher.' })
+    async getStudents(
+        @Request() req,
+        @Query('classId', ParseIntPipe) classId?: number,
+        @Query('sectionId', ParseIntPipe) sectionId?: number,
+    ) {
+        const userId = req.user.id;
+        const schoolId = req.user.schoolId;
+        return this.service.getStudentsForAttendance(userId, schoolId, classId, sectionId);
+    }
+
     @Get('monitor/search')
     @ApiOperation({ summary: 'Search Students (Monitor)', description: 'Search students by name/reg no. Restricted to Late Attendance Monitors.' })
     async searchMonitor(

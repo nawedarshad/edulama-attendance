@@ -764,5 +764,34 @@ export class TeacherAttendanceService {
             }
         });
     }
-
+    async getStudentsForAttendance(teacherId: number, schoolId: number, classId?: number, sectionId?: number) {
+        if (classId && sectionId) {
+            return this.prisma.studentProfile.findMany({
+                where: {
+                    schoolId,
+                    classId,
+                    sectionId,
+                },
+                select: {
+                    id: true,
+                    classId: true,
+                    sectionId: true,
+                    userId: true,
+                    rollNo: true,
+                    fullName: true,
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            photo: true
+                        }
+                    }
+                },
+                orderBy: {
+                    rollNo: 'asc'
+                }
+            });
+        }
+        return [];
+    }
 }
