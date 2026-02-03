@@ -1,0 +1,178 @@
+enum SubjectType {
+  CORE
+  ELECTIVE
+  CO_SCHOLASTIC
+  LAB
+  VOCATIONAL
+}
+
+model ClassSubject {
+  id             Int @id @default(autoincrement())
+  schoolId       Int
+  academicYearId Int
+
+  classId   Int
+  sectionId Int
+  subjectId Int
+
+  // The unique code for this class-subject instance (e.g., MATH-9A)
+  classSubjectCode String
+
+  // ---------------------------------------------
+  // CLASS-SPECIFIC CONFIGURATION
+  // ---------------------------------------------
+  type SubjectType @default(CORE)
+
+  categoryId Int?
+
+  // Academic Weightage
+  credits       Float? // GPA / Credits (e.g., 4.0)
+  weeklyClasses Int? // Target periods per week
+
+  // Assessment Limits
+  maxMarks  Float? @default(100)
+  passMarks Float? @default(33)
+
+  // Flags
+  isOptional     Boolean @default(false)
+  hasLab         Boolean @default(false)
+  excludeFromGPA Boolean @default(false)
+
+  // ---------------------------------------------
+
+  school       School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class        Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  section      Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject      Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  category     SubjectCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  teacherProfileId Int?
+  teacherProfile   TeacherProfile? @relation(fields: [teacherProfileId], references: [id], onDelete: SetNull)
+
+  roomAssignments RoomAssignment[]
+  classDiaries    ClassDiary[]
+
+  @@unique([schoolId, academicYearId, sectionId, subjectId])
+  @@index([schoolId, academicYearId])
+}
+
+model Class {
+  id       Int @id @default(autoincrement())
+  schoolId Int
+  // academicYearId Int <- REMOVED
+
+  name        String
+  description String?
+  stage       EducationalStage @default(PRIMARY)
+
+  capacity Int?
+  order    Int  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scheduleId Int?
+
+  school   School    @relation(fields: [schoolId], references: [id])
+  schedule Schedule? @relation(fields: [scheduleId], references: [id])
+  // academicYear AcademicYear @relation(fields: [academicYearId], references: [id])  <- REMOVED
+
+  sections    Section[]
+  subjects    ClassSubject[]
+  headTeacher ClassHeadTeacher?
+
+  // existing relations (kept)
+  calendarExceptions   CalendarException[]
+  StudentProfile       StudentProfile[]
+  SubjectAssignment    SubjectAssignment[]
+  TimetableEntry       TimetableEntry[]
+  AnnouncementAudience AnnouncementAudience[]
+  AttendanceSession    AttendanceSession[]
+  classDiaries         ClassDiary[]
+  syllabi              Syllabus[]
+  academicYear         AcademicYear?          @relation(fields: [academicYearId], references: [id])
+  academicYearId       Int?
+  teacherProfile       TeacherProfile?        @relation(fields: [teacherProfileId], references: [id], onDelete: SetNull)
+  teacherProfileId     Int?
+  notices              Notice[]
+
+  schoolAdminScopes SchoolAdminScope[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Section {
+  id       Int @id @default(autoincrement())
+  schoolId Int
+  // academicYearId Int <- REMOVED
+  classId  Int
+
+  name        String
+  description String?
+  stream      String?
+
+  capacity Int?
+  order    Int  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id])
+  // academicYear AcademicYear @relation(fields: [academicYearId], references: [id]) <- REMOVED
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  ClassSubject   ClassSubject[]
+  StudentProfile StudentProfile[]
+  classTeacher   SectionTeacher?
+
+  // existing relations
+  SubjectAssignment    SubjectAssignment[]
+  TimetableEntry       TimetableEntry[]
+  AnnouncementAudience AnnouncementAudience[]
+  AttendanceSession    AttendanceSession[]
+  roomAssignments      RoomAssignment[]
+  classDiaries         ClassDiary[]
+  academicYear         AcademicYear?          @relation(fields: [academicYearId], references: [id])
+  academicYearId       Int?
+  notices              Notice[]
+  schoolAdminScopes    SchoolAdminScope[]
+
+  @@unique([schoolId, classId, name])
+  @@index([schoolId])
+}
+
+model ClassHeadTeacher {
+  id             Int @id @default(autoincrement())
+  schoolId       Int
+  academicYearId Int
+  classId        Int @unique
+
+  teacherId  Int?
+  assignedAt DateTime @default(now())
+
+  school       School          @relation(fields: [schoolId], references: [id])
+  academicYear AcademicYear    @relation(fields: [academicYearId], references: [id])
+  class        Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher      TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, academicYearId])
+}
+
+model SectionTeacher {
+  id             Int @id @default(autoincrement())
+  schoolId       Int
+  academicYearId Int
+  sectionId      Int @unique
+
+  teacherId  Int?
+  assignedAt DateTime @default(now())
+
+  school       School          @relation(fields: [schoolId], references: [id])
+  academicYear AcademicYear    @relation(fields: [academicYearId], references: [id])
+  section      Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  teacher      TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, academicYearId])
+}

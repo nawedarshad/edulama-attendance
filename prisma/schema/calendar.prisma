@@ -1,0 +1,40 @@
+enum DayType {
+  WORKING
+  HOLIDAY
+  SPECIAL_WORKING
+  EVENT
+}
+
+// ------------------- WORKING PATTERN (RULES) -------------------
+model WorkingPattern {
+  id             Int       @id @default(autoincrement())
+  schoolId       Int
+  academicYearId Int
+  dayOfWeek      DayOfWeek
+  isWorking      Boolean   @default(true)
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, academicYearId, dayOfWeek])
+  @@index([schoolId, academicYearId])
+}
+
+// ------------------- CALENDAR EXCEPTIONS -------------------
+model CalendarException {
+  id             Int      @id @default(autoincrement())
+  schoolId       Int
+  academicYearId Int
+  date           DateTime @db.Date
+  type           DayType
+  title          String?
+  description    String?
+  classId        Int? // NULL = school-wide
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class        Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, academicYearId, date, classId])
+  @@index([schoolId, date])
+}

@@ -1,0 +1,100 @@
+//-------------------------------------------------------------
+// ENUMS
+//-------------------------------------------------------------
+enum AllocationType {
+  AUTO
+  MANUAL
+}
+
+enum AllocationStrategy {
+  EQUAL
+  CUSTOM
+  WEIGHTED
+}
+
+//-------------------------------------------------------------
+// SUBJECT CATEGORY
+//-------------------------------------------------------------
+model SubjectCategory {
+  id       Int    @id @default(autoincrement())
+  schoolId Int
+  name     String
+
+  classSubjects ClassSubject[]
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+//-------------------------------------------------------------
+// SUBJECT (WITH SUB-SUBJECT SUPPORT)
+//-------------------------------------------------------------
+model Subject {
+  id       Int @id @default(autoincrement())
+  schoolId Int
+  // Subjects are global per school
+
+  name String
+  code String
+
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Visuals
+  color String? // Hex code
+  icon  String? // Icon name
+
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Core relations
+  ClassSubject             ClassSubject[]
+  SubjectAssignment        SubjectAssignment[]
+  ClassDiary               ClassDiary[]
+  AttendanceSession        AttendanceSession[]
+  timetableEntries         TimetableEntry[]
+  syllabi                  Syllabus[]
+  teacherPreferredSubjects TeacherPreferredSubject[]
+
+  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  academicYearId Int?
+  notices        Notice[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+//-------------------------------------------------------------
+// SUBJECT ASSIGNMENT (teacher assigned to a subject)
+//-------------------------------------------------------------
+model SubjectAssignment {
+  id Int @id @default(autoincrement())
+
+  schoolId       Int
+  academicYearId Int
+
+  classId   Int
+  sectionId Int?
+  subjectId Int
+  teacherId Int?
+
+  periodsPerWeek Int?
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  class        Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  section      Section?        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject      Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher      TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, academicYearId, classId, sectionId, subjectId])
+  @@index([teacherId])
+}
