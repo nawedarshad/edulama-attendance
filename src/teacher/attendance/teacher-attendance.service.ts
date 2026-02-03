@@ -88,7 +88,14 @@ export class TeacherAttendanceService {
             }
         }
 
-        // 5. Create Attendance Session
+        // 5. Fetch Approved Leaves for Logic (Auto-Excused)
+        const leaves = await this.getLeavesForAttendance(schoolId, dto.classId, dto.sectionId, attendanceDate);
+        const leaveMap = new Map<number, any>();
+        leaves.forEach(l => {
+            if (l.studentProfileId) leaveMap.set(l.studentProfileId, l);
+        });
+
+        // 6. Create Attendance Session
         // Check if session already exists
         // 5. Create or Get Attendance Session
         // Check if session already exists (could be created by Mark Late)
@@ -152,6 +159,16 @@ export class TeacherAttendanceService {
                     continue;
                 }
 
+                // Check for Leave
+                let finalStatus = record.status;
+                let finalRemarks = record.remarks;
+
+                const leave = leaveMap.get(pid as number);
+                if (leave) {
+                    finalStatus = AttendanceStatus.EXCUSED;
+                    finalRemarks = finalRemarks ? `${finalRemarks} | On Leave` : 'On Leave';
+                }
+
                 await tx.attendance.upsert({
                     where: {
                         schoolId_attendanceSessionId_studentProfileId: {
@@ -162,15 +179,15 @@ export class TeacherAttendanceService {
                     },
                     update: {
                         // Strategy: Overwrite status and remarks. preserve isLate if status is PRESENT.
-                        status: record.status,
-                        remarks: record.remarks,
+                        status: finalStatus,
+                        remarks: finalRemarks,
                     },
                     create: {
                         schoolId,
                         attendanceSessionId: session.id,
                         studentProfileId: pid as number,
-                        status: record.status,
-                        remarks: record.remarks,
+                        status: finalStatus,
+                        remarks: finalRemarks,
                     }
                 });
             }
@@ -442,8 +459,12 @@ export class TeacherAttendanceService {
                     studentProfileId: a.studentProfileId,
                     userId: a.studentProfile?.userId, // Match by UserID
                     studentName: a.studentProfile?.user?.name || 'Unknown Student',
+                    rollNo: a.studentProfile?.rollNo, // Added rollNo
+                    photo: a.studentProfile?.user?.photo, // Added photo
                     status: a.status,
                     remarks: a.remarks,
+                    isLate: a.isLate, // Added isLate
+                    lateReason: a.lateReason, // Added lateReason
                 }))
         }));
     }
